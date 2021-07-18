@@ -1,5 +1,6 @@
 from typing import Tuple, List 
 from utils import flatten
+import numpy as np
 BoardList = List[List[int]]
 Position = Tuple[int]
 
@@ -10,6 +11,16 @@ class Board:
         self.board = board
         self.player = player
         self.isTrap = False
+
+    def __str__(self):
+        return str(self.player) + ''.join(str(r) for v in self.board for r in v) 
+
+    # add [][] indexer syntax to the Board
+    def __getitem__(self, index): 
+        return np.array(self.board)[index]
+
+    def astype(self,t):
+        return np.array(self.board).astype(t)
 
     def isEnd(self):
         flatBoard = flatten(self.board)
@@ -25,7 +36,6 @@ class Board:
         if (piece != self.player): raise RuntimeError('Piece at from position is not match with current player')
 
         sucessors = self.getSuccessorsAt(fromPosition, self.player)
-        print(sucessors)
         if (sucessors.index(toPosition) == -1): raise RuntimeError('Wrong move position')
 
         newBoard, _ = self._getNewBoard(fromPosition, toPosition)
@@ -128,12 +138,15 @@ class Board:
 
         return list(set(result))
 
-    def _getNewBoard(self, fromPosition: Position, toPosition: Position):
+    def __getShallowNewBoard(self, fromPosition: Position, toPosition: Position):
         newBoardList = [x[:] for x in self.board]
         newBoard = Board(newBoardList, self.player * -1)
         newBoard._updateBoard(toPosition, self.player)
         newBoard._updateBoard(fromPosition, 0)
         capturePosition = newBoard.getCaptured(toPosition)
+        return newBoard, capturePosition
+    def _getNewBoard(self, fromPosition: Position, toPosition: Position):
+        newBoard, capturePosition = self.__getShallowNewBoard(fromPosition, toPosition)
         
         if (len(capturePosition) > 0):
             newCapture = capturePosition
@@ -164,7 +177,7 @@ class Board:
 
         res = []
         for pos in pieceCanMove:
-            newBoard, capturePosition = self._getNewBoard(pos, position)
+            newBoard, capturePosition = self.__getShallowNewBoard(pos, position)
             if (len(capturePosition) > 0):
                 res.append((pos[0], pos[1], position[0], position[1]))
         
