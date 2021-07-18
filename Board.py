@@ -14,22 +14,22 @@ class Board:
         flatBoard = flatten(self.board)
         NUM_OF_PIECE = self.size*4 - 4
         numOfPeice = flatBoard.count(1)
-        if (numOfPeice == NUM_OF_PIECE) return 1
+        if (numOfPeice == NUM_OF_PIECE): return 1
         numOfPeice = flatBoard.count(-1)
-        if (numOfPeice == NUM_OF_PIECE) return -1
+        if (numOfPeice == NUM_OF_PIECE): return -1
         return 0
 
     def move(self, fromPosition: Position, toPosition: Position):
         piece = self.getPiece(fromPosition)
         if (piece != self.player): raise RuntimeError('Piece at from position is not match with current player')
 
-        sucessors = self.getSuccessors(fromPosition)
+        sucessors = self.getSuccessorsAt(fromPosition)
         if (sucessors.index(toPosition) == -1): raise RuntimeError('Wrong move position')
 
         newBoard = self._getNewBoard(fromPosition, toPosition)
         return newBoard
 
-    def getSuccessors(self, position: Position):
+    def getSuccessorsAt(self, position: Position):
         piece = self.getPiece(position)
         if piece != self.player: return []
 
@@ -43,10 +43,12 @@ class Board:
         return result
     
     def getPiece(self, position):
-        return self.board[position[0]][position[1]]
+        x, y = position
+        if (x < 0 or y < 0 or x >= self.size or y >= self.size): return 0
+        return self.board[x][y]
 
     # Gánh 
-    def getCarried(self, position: Postion):
+    def getCarried(self, position: Position):
         piece = self.getPiece(position)
         if (piece == 0): return []
         result = []
@@ -70,18 +72,49 @@ class Board:
         return result
 
     # Vây
-    # def getEmbraced(self, position: Position):
+    def getEmbraced(self, position: Position):
+        x, y = position
+        piece = self.getPiece(position)
+        result = []
+        if (self.getPiece((x-1, y)) == piece * -1 and \
+            self.getPiece((x-2, y)) == piece):
+            result.append((x-1, y))
+        if (self.getPiece((x+1, y)) == piece * -1 and \
+            self.getPiece((x+2, y)) == piece):
+            result.append((x+1, y))
+        if (self.getPiece((x, y-1)) == piece * -1 and \
+            self.getPiece((x, y-2)) == piece):
+            result.append((x, y-1))
+        if (self.getPiece((x, y+1)) == piece * -1 and \
+            self.getPiece((x, y+2)) == piece):
+            result.append((x, y+1))
 
+        if ((x+y)%2 == 0): 
+            if (self.getPiece((x-1, y-1)) == piece * -1 and \
+                self.getPiece((x-2, y-2)) == piece):
+                result.append((x-1, y-1))
+            if (self.getPiece((x+1, y+1)) == piece * -1 and \
+                self.getPiece((x+2, y+2)) == piece):
+                result.append((x+1, y+1))
+            
+            if (self.getPiece((x+1, y-1)) == piece * 1 and \
+                self.getPiece((x+2, y-2)) == piece):
+                result.append((x+1, y-1))
+            if (self.getPiece((x-1, y+1)) == piece * 1 and \
+                self.getPiece((x-2, y+2)) == piece):
+                result.append((x-1, y+1))
+        
+        return result
 
-    def _getNewBoard(self, fromPosition: Position, toPosition: Position) -> Board:
+    def _getNewBoard(self, fromPosition: Position, toPosition: Position):
         newBoardList = [x[:] for x in self.board]
-        newBoard = Board(newBoard, self.player * -1)
+        newBoard = Board(newBoardList, self.player * -1)
         newBoard._updateBoard(toPosition, self.player)
         newBoard._updateBoard(fromPosition, 0)
         carriedPosition = newBoard.getCarried(toPosition)
-        map(lambda pos: newBoard._updateBoard(pos, self.player), flatten(carriedPosition))
-
+        embracedPosition = newBoard.getEmbraced(toPosition)
         
+        list(map(lambda pos: newBoard._updateBoard(pos, self.player), flatten(carriedPosition) + embracedPosition))
         return newBoard
 
     def _updateBoard(self, position: Position, value: int):
@@ -89,8 +122,7 @@ class Board:
         return self
 
     def _getNearbyPosition(self, position: Position):
-        x = position[0]
-        y = position[1]
+        x, y = position
         if ((x+y)%2 == 0):
             return self._getHorizontalVerticalPosition(position) + self._getDiagonalPosition(position)
         else:
@@ -107,8 +139,7 @@ class Board:
         return result
 
     def _getHorizontalPosition(self, position: Position):
-        x = position[0]
-        y = position[1]
+        x, y = position
         maxSize = self.size - 1
         result = []
         if (x > 0 ): result.append((x-1, y))
@@ -117,8 +148,7 @@ class Board:
         return result
 
     def _getVerticalPosition(self, position: Position):
-        x = position[0]
-        y = position[1]
+        x, y = position
         maxSize = self.size - 1
         result = []
 
@@ -128,8 +158,7 @@ class Board:
         return result
 
     def _getDiagonal1Position(self, position: Position):
-        x = position[0]
-        y = position[1]
+        x, y = position
         maxSize = self.size - 1
         if ((x+y)%2 == 1): return []
 
@@ -140,8 +169,7 @@ class Board:
         return result 
 
     def _getDiagonal2Position(self, position: Position):
-        x = position[0]
-        y = position[1]
+        x, y = position
         maxSize = self.size - 1
         if ((x+y)%2 == 1): return []
 
