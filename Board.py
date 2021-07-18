@@ -9,6 +9,7 @@ class Board:
         self.size = len(board)
         self.board = board
         self.player = player
+        self.isTrap = False
 
     def isEnd(self):
         flatBoard = flatten(self.board)
@@ -23,15 +24,28 @@ class Board:
         piece = self.getPiece(fromPosition)
         if (piece != self.player): raise RuntimeError('Piece at from position is not match with current player')
 
-        sucessors = self.getSuccessorsAt(fromPosition)
+        sucessors = self.getSuccessorsAt(fromPosition, self.player)
+        print(sucessors)
         if (sucessors.index(toPosition) == -1): raise RuntimeError('Wrong move position')
 
-        newBoard = self._getNewBoard(fromPosition, toPosition)
+        newBoard, _ = self._getNewBoard(fromPosition, toPosition)
         return newBoard
 
-    def getSuccessorsAt(self, position: Position):
+    def getAllSuccessor(self):
+        if (self.isTrap):
+            return self.isTrap
+        res = []
+        for x in range(0, self.size):
+            for y in range(0, self.size):
+                if (self.board[x][y] == self.player):
+                    successors = self.getSuccessorsAt((x,y), self.player)
+                    for s in successors:
+                        res.append((x, y, s[0], s[1]))
+        return res
+
+    def getSuccessorsAt(self, position: Position, player):
         piece = self.getPiece(position)
-        if piece != self.player: return []
+        if piece != player: return []
 
         nearPosition = self._getNearbyPosition(position)
         result = []
@@ -46,6 +60,11 @@ class Board:
         x, y = position
         if (x < 0 or y < 0 or x >= self.size or y >= self.size): return 0
         return self.board[x][y]
+
+    def getCaptured(self, position: Position):
+        carriedPosition = self.getCarried(position)
+        embracedPosition = self.getEmbraced(position)
+        return list(set(carriedPosition + embracedPosition))
 
     # Gánh 
     def getCarried(self, position: Position):
@@ -69,53 +88,91 @@ class Board:
         diagonal2 = self._getDiagonal2Position(position)
         checkAndAddResult(diagonal2)
 
-        return result
+        return flatten(result)
 
     # Vây
     def getEmbraced(self, position: Position):
         x, y = position
         piece = self.getPiece(position)
         result = []
-        if (self.getPiece((x-1, y)) == piece * -1 and \
-            self.getPiece((x-2, y)) == piece):
-            result.append((x-1, y))
-        if (self.getPiece((x+1, y)) == piece * -1 and \
-            self.getPiece((x+2, y)) == piece):
-            result.append((x+1, y))
-        if (self.getPiece((x, y-1)) == piece * -1 and \
-            self.getPiece((x, y-2)) == piece):
-            result.append((x, y-1))
-        if (self.getPiece((x, y+1)) == piece * -1 and \
-            self.getPiece((x, y+2)) == piece):
-            result.append((x, y+1))
+        nearPosition = self._getNearbyPosition(position)
+        for pos in nearPosition:
+            if (self.getPiece(pos) == -piece):
+                isCapture = True
+                lst = []
+                newlst = [pos]
+                while (len(newlst) != 0):
+                    lst += newlst
+                    newnew = []
+                    for p in newlst:
+                        alln = self._getNearbyPosition(p)
+                        for npos in alln:
+                            pi = self.getPiece(npos)
+                            if (pi == -piece and npos not in lst ):
+                                newnew.append(npos)
+                    newlst = newnew
 
-        if ((x+y)%2 == 0): 
-            if (self.getPiece((x-1, y-1)) == piece * -1 and \
-                self.getPiece((x-2, y-2)) == piece):
-                result.append((x-1, y-1))
-            if (self.getPiece((x+1, y+1)) == piece * -1 and \
-                self.getPiece((x+2, y+2)) == piece):
-                result.append((x+1, y+1))
-            
-            if (self.getPiece((x+1, y-1)) == piece * 1 and \
-                self.getPiece((x+2, y-2)) == piece):
-                result.append((x+1, y-1))
-            if (self.getPiece((x-1, y+1)) == piece * 1 and \
-                self.getPiece((x-2, y+2)) == piece):
-                result.append((x-1, y+1))
-        
-        return result
+                for p in lst:
+                    alln = self._getNearbyPosition(p)
+                    for npos in alln:
+                        pi = self.getPiece(npos)
+                        if (pi == 0):
+                            # ko bi chan
+                            isCapture = False
+                            break
+                    if not isCapture:
+                        break
+
+                if (isCapture):
+                    result += lst
+
+        return list(set(result))
 
     def _getNewBoard(self, fromPosition: Position, toPosition: Position):
         newBoardList = [x[:] for x in self.board]
         newBoard = Board(newBoardList, self.player * -1)
         newBoard._updateBoard(toPosition, self.player)
         newBoard._updateBoard(fromPosition, 0)
-        carriedPosition = newBoard.getCarried(toPosition)
-        embracedPosition = newBoard.getEmbraced(toPosition)
+        capturePosition = newBoard.getCaptured(toPosition)
         
-        list(map(lambda pos: newBoard._updateBoard(pos, self.player), flatten(carriedPosition) + embracedPosition))
-        return newBoard
+        if (len(capturePosition) > 0):
+            newCapture = capturePosition
+            while (len(newCapture) != 0):
+                for pos in newCapture:
+                    newBoard._updateBoard(pos, self.player)
+                new = []
+                for pos in newCapture:
+                    new += newBoard.getEmbraced(pos)
+                newCapture = new
+                capturePosition += newCapture
+            
+            # list(map(lambda pos: newBoard._updateBoard(pos, self.player), capturePosition))
+        else:
+            newBoard.isTrap = newBoard._isTrap(fromPosition)
+        
+        
+        return newBoard, capturePosition
+
+    def _isTrap(self, position: Position):
+        nearPosition = self._getNearbyPosition(position)
+        pieceCanMove = []
+
+        for pos in nearPosition: 
+            piece = self.getPiece(pos)
+            if piece == self.player:
+                pieceCanMove.append(pos)
+
+        res = []
+        for pos in pieceCanMove:
+            newBoard, capturePosition = self._getNewBoard(pos, position)
+            if (len(capturePosition) > 0):
+                res.append((pos[0], pos[1], position[0], position[1]))
+        
+        if (len(res) > 0):
+            return res
+        else: 
+            return False
+
 
     def _updateBoard(self, position: Position, value: int):
         self.board[position[0]][position[1]] = value
