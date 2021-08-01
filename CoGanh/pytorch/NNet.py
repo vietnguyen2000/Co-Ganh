@@ -52,7 +52,7 @@ class NNetWrapper(NeuralNet):
             for _ in t:
                 sample_ids = np.random.randint(len(examples), size=args.batch_size)
                 boards, pis, vs = list(zip(*[examples[i] for i in sample_ids]))
-                boards = torch.FloatTensor(np.array(boards).astype(np.float64))
+                boards = torch.FloatTensor(np.array(list(map(lambda board: board.astype(np.float64), boards))))
                 target_pis = torch.FloatTensor(np.array(pis))
                 target_vs = torch.FloatTensor(np.array(vs).astype(np.float64))
 

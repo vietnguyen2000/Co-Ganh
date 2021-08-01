@@ -7,6 +7,8 @@ EPS = 1e-8
 
 log = logging.getLogger(__name__)
 
+import sys
+sys.setrecursionlimit(2000)
 
 class MCTS():
     """
@@ -38,7 +40,8 @@ class MCTS():
             self.search(canonicalBoard)
 
         s = self.game.stringRepresentation(canonicalBoard)
-        counts = [self.Nsa[(s, a)] if (s, a) in self.Nsa else 0 for a in range(self.game.getActionSize())]
+        counts = [self.Nsa[(s, a)] if (
+            s, a) in self.Nsa else 0 for a in range(self.game.getActionSize())]
 
         if temp == 0:
             bestAs = np.array(np.argwhere(counts == np.max(counts))).flatten()
@@ -52,7 +55,7 @@ class MCTS():
         probs = [x / counts_sum for x in counts]
         return probs
 
-    def search(self, canonicalBoard):
+    def search(self, canonicalBoard, old = 10):
         """
         This function performs one iteration of MCTS. It is recursively called
         till a leaf node is found. The action chosen at each node is one that
@@ -73,15 +76,17 @@ class MCTS():
         """
 
         s = self.game.stringRepresentation(canonicalBoard)
-
-        if s not in self.Es:
+        if s not in self.Es or old > 900:
             self.Es[s] = self.game.getGameEnded(canonicalBoard, 1)
         if self.Es[s] != 0:
             # terminal node
+            # print('********* new recursive ********')
+            # print('*****************************')
             return -self.Es[s]
 
         if s not in self.Ps:
             # leaf node
+            # print('why im here?')
             self.Ps[s], v = self.nnet.predict(canonicalBoard)
             valids = self.game.getValidMoves(canonicalBoard, 1)
             self.Ps[s] = self.Ps[s] * valids  # masking invalid moves
@@ -92,13 +97,15 @@ class MCTS():
                 # if all valid moves were masked make all valid moves equally probable
 
                 # NB! All valid moves may be masked if either your NNet architecture is insufficient or you've get overfitting or something else.
-                # If you have got dozens or hundreds of these messages you should pay attention to your NNet and/or training process.   
+                # If you have got dozens or hundreds of these messages you should pay attention to your NNet and/or training process.
                 log.error("All valid moves were masked, doing a workaround.")
                 self.Ps[s] = self.Ps[s] + valids
                 self.Ps[s] /= np.sum(self.Ps[s])
 
             self.Vs[s] = valids
             self.Ns[s] = 0
+            # print('********* new recursive ********')
+            # print('*****************************')
             return -v
 
         valids = self.Vs[s]
@@ -110,9 +117,10 @@ class MCTS():
             if valids[a]:
                 if (s, a) in self.Qsa:
                     u = self.Qsa[(s, a)] + self.args.cpuct * self.Ps[s][a] * math.sqrt(self.Ns[s]) / (
-                            1 + self.Nsa[(s, a)])
+                        1 + self.Nsa[(s, a)])
                 else:
-                    u = self.args.cpuct * self.Ps[s][a] * math.sqrt(self.Ns[s] + EPS)  # Q = 0 ?
+                    u = self.args.cpuct * \
+                        self.Ps[s][a] * math.sqrt(self.Ns[s] + EPS)  # Q = 0 ?
 
                 if u > cur_best:
                     cur_best = u
@@ -122,10 +130,13 @@ class MCTS():
         next_s, next_player = self.game.getNextState(canonicalBoard, 1, a)
         next_s = self.game.getCanonicalForm(next_s, next_player)
 
-        v = self.search(next_s)
+        # display(next_s)
+
+        v = self.search(next_s, old +1)
 
         if (s, a) in self.Qsa:
-            self.Qsa[(s, a)] = (self.Nsa[(s, a)] * self.Qsa[(s, a)] + v) / (self.Nsa[(s, a)] + 1)
+            self.Qsa[(s, a)] = (self.Nsa[(s, a)] *
+                                self.Qsa[(s, a)] + v) / (self.Nsa[(s, a)] + 1)
             self.Nsa[(s, a)] += 1
 
         else:
@@ -134,3 +145,20 @@ class MCTS():
 
         self.Ns[s] += 1
         return -v
+
+
+def display(board):
+    m = {
+        "-1": "O",
+        "0": "-",
+        "1": "X",
+    }
+    print("---------------------")
+    raw = board.board
+    print('player', board.player, 'on turn:')
+    for x in range(0, 5):
+        for y in range(0, 5):
+            print(m[str(raw[x][y])] + ' ', end='')
+        print()
+    print()
+    print("---------------------")

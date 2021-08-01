@@ -155,3 +155,24 @@ def int2base(x, base, length):
     while len(digits)<length: digits.extend(["0"])
     
     return list(map(lambda x: int(x),digits))
+
+    @staticmethod
+    def display(board):
+        n = {
+            "-1": "O",
+            "0": "-",
+            "1": "X",
+        }
+        print("---------------------")
+        raw = board.board
+        print('player', board.player, 'on turn:')
+        for x in range(0, 5):
+            for y in range(0, 5):
+                print(m[str(raw[x][y])] + ' ', end='')
+
+            print()
+        print()
+        print("---------------------")
+
+
+
