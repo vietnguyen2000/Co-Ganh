@@ -75,7 +75,8 @@ class MCTS():
 
         s = self.game.stringRepresentation(canonicalBoard)
         oldS.append(s)
-        if (old > 100):
+        if (old > 900):
+            print('depth', old)
             canonicalBoard.display()
         if s not in self.Es:
             self.Es[s] = self.game.getGameEnded(canonicalBoard, 1)
@@ -108,6 +109,7 @@ class MCTS():
 
         valids = self.Vs[s].copy()
         next_s = canonicalBoard
+        first = None
         while (str(next_s) in oldS):
             cur_best = -float('inf')
             best_act = -1
@@ -126,12 +128,14 @@ class MCTS():
                         best_act = a
 
             a = best_act
-            # print(a)
+            if not first: first = a
+            if a == -1:
+                next_s, next_player = self.game.getNextState(canonicalBoard, 1, first)
+                next_s = self.game.getCanonicalForm(next_s, next_player)
+                break
             next_s, next_player = self.game.getNextState(canonicalBoard, 1, a)
             next_s = self.game.getCanonicalForm(next_s, next_player)
             valids[a] = 0
-            # next_s.display()
-            # print(next_s, oldS, oldS.index(str(next_s)) if str(next_s) in oldS else False, old)
 
         v = self.search(next_s, old +1, oldS)
 
