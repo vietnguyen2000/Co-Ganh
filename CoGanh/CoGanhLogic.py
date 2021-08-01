@@ -27,10 +27,6 @@ class Board:
         return np.array(self.board).astype(t)
 
     def isEnd(self):
-        if (self.moveCount >= 1000): 
-            # print('****draw****')
-            # self.display()
-            return 0.001 * self.player # draw
         flatBoard = flatten(self.board)
         NUM_OF_PIECE = self.size*4 - 4
         numOfPeice = flatBoard.count(1)
@@ -44,6 +40,8 @@ class Board:
     def move(self, fromPosition: Position, toPosition: Position):
         piece = self.getPiece(fromPosition)
         if (piece != self.player):
+            self.display()
+            print(fromPosition, toPosition)
             raise RuntimeError(
                 'Piece at from position is not match with current player')
 
@@ -65,6 +63,24 @@ class Board:
                     for s in successors:
                         res.append((x, y, s[0], s[1]))
         return res
+
+    def getCanonicalForm(self):
+        if (self.player == 1):
+            return self
+
+        else:
+            newBoardList = [x[:] for x in self.board]
+            res = Board(newBoardList, self.player * -1, self.moveCount)
+            for x in range(self.size):
+                for y in range(self.size):
+                    res.board[x][y] = -self.board[x][y]
+
+            res.isTrap = self.isTrap
+            # print('before')
+            # self.display()
+            # print('after')
+            # res.display()
+            return res
 
     def getSuccessorsAt(self, position: Position, player):
         piece = self.getPiece(position)
@@ -291,4 +307,6 @@ class Board:
             
             print()
         print()
+        print(self)
+        print(self.getAllSuccessor())
         print("---------------------")

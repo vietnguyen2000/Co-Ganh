@@ -87,7 +87,7 @@ class CoGanhGame(Game):
                small non-zero value for draw.
                
         """
-        return board.isEnd()
+        return board.isEnd() * player
 
     def getCanonicalForm(self, board, player):
         """
@@ -103,7 +103,7 @@ class CoGanhGame(Game):
                             board as is. When the player is black, we can invert
                             the colors and return the board.
         """
-        return board
+        return board.getCanonicalForm()
 
     def getSymmetries(self, board, pi):
         """
